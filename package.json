@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.2",
+    "@mui/material": "^7.3.2",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.15",
+    "@types/react-dom": "^19.1.9",
+    "axios": "^1.12.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.3",
+    "react-scripts": "^0.0.0",
+    "typescript": "^4.9.5"
+  },
+  "name": "computer",
+  "version": "1.0.0",
+  "description": "ComPuter es una aplicación web inteligente que ayuda a los usuarios a seleccionar los mejores componentes para armar su PC ideal. Utiliza inteligencia artificial para proporcionar recomendaciones personalizadas basadas en el presupuesto, tipo de uso y preferencias del usuario.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

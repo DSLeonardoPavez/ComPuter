@@ -1,0 +1,56 @@
+.App {
+  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding-top: 64px; /* Height of AppBar */
+}
+
+/* Estilos globales para Material-UI */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Animaciones suaves */
+.MuiButton-root {
+  transition: all 0.3s ease-in-out !important;
+}
+
+.MuiCard-root {
+  transition: transform 0.2s ease-in-out !important;
+}
+
+.MuiCard-root:hover {
+  transform: translateY(-2px);
+}
+
+/* Estilos para el chatbot */
+.chatbot-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1300;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .main-content {
+    padding-top: 56px; /* Smaller AppBar height on mobile */
+  }
+  
+  .chatbot-container {
+    bottom: 10px;
+    right: 10px;
+  }
+}

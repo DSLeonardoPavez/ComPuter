@@ -1,0 +1,132 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: computer_postgres
+    environment:
+      POSTGRES_DB: computer_db
+      POSTGRES_USER: computer_user
+      POSTGRES_PASSWORD: computer_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - computer_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U computer_user -d computer_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: computer_backend
+    environment:
+      - DATABASE_URL=postgresql://computer_user:computer_password@postgres:5432/computer_db
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - ENVIRONMENT=development
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./backend/app/models:/app/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - computer_network
+    command: >
+      sh -c "
+        echo 'Esperando a que PostgreSQL esté listo...' &&
+        sleep 10 &&
+        echo 'Instalando dependencias...' &&
+        pip install -r requirements.txt &&
+        echo 'Ejecutando migraciones...' &&
+        python -c 'from app.database import init_database; init_database()' &&
+        echo 'Poblando base de datos...' &&
+        python populate_db.py &&
+        echo 'Entrenando modelo NLP...' &&
+        python train_nlp.py &&
+        echo 'Iniciando servidor...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+    restart: unless-stopped
+
+  # Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: computer_frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_ENVIRONMENT=development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - computer_network
+    command: >
+      sh -c "
+        echo 'Instalando dependencias del frontend...' &&
+        npm install &&
+        echo 'Iniciando servidor de desarrollo...' &&
+        npm start
+      "
+    restart: unless-stopped
+
+  # Redis para caché (opcional)
+  redis:
+    image: redis:7-alpine
+    container_name: computer_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - computer_network
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+  # Nginx como proxy reverso (producción)
+  nginx:
+    image: nginx:alpine
+    container_name: computer_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - computer_network
+    profiles:
+      - production
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  computer_network:
+    driver: bridge
