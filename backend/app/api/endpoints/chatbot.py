@@ -37,7 +37,6 @@ class ChatHistoryResponse(BaseModel):
 @router.post("/chat", response_model=ChatResponse)
 def chat(
     request: ChatRequest,
-    current_user: Optional[User] = None,
     db: Session = Depends(get_db)
 ) -> Dict:
     """
@@ -53,11 +52,69 @@ def chat(
     # Procesar el mensaje y obtener respuesta
     response = chatbot.process_message(session_id, request.message)
     
-    # Asociar la sesión con el usuario si está autenticado
-    if current_user:
-        session = chatbot.get_or_create_session(session_id)
-        session.user_id = current_user.id
+    # Verificar si el mensaje contiene palabras clave para buscar componentes
+    keywords = ["recomienda", "busca", "encuentra", "mejor", "componente", "cpu", "gpu", "ram", "placa", "motherboard", "fuente", "psu", "almacenamiento", "ssd", "hdd"]
     
+    if any(keyword in request.message.lower() for keyword in keywords):
+        # Intentar obtener componentes de la base de datos
+        try:
+            from ...scraper import ComponentScraper
+            from ... import crud
+            
+            # Inicializar el scraper
+            component_scraper = ComponentScraper()
+            
+            # Determinar qué tipo de componente buscar
+            component_type = None
+            if "cpu" in request.message.lower():
+                component_type = "CPU"
+            elif "gpu" in request.message.lower() or "tarjeta" in request.message.lower():
+                component_type = "GPU"
+            elif "ram" in request.message.lower() or "memoria" in request.message.lower():
+                component_type = "RAM"
+            elif "placa" in request.message.lower() or "motherboard" in request.message.lower():
+                component_type = "Motherboard"
+            elif "fuente" in request.message.lower() or "psu" in request.message.lower():
+                component_type = "PSU"
+            elif "almacenamiento" in request.message.lower() or "ssd" in request.message.lower() or "hdd" in request.message.lower():
+                component_type = "Storage"
+            
+            if component_type:
+                # Buscar componentes en la base de datos
+                components = crud.get_components_by_type(db, component_type, limit=3)
+                
+                # Si no hay componentes, intentar hacer scraping
+                if not components:
+                    # Hacer scraping y guardar en la base de datos
+                    scraped_components = component_scraper.scrape_newegg_components(component_type, max_pages=1)
+                    for comp_data in scraped_components[:5]:  # Limitar a 5 componentes
+                        component = crud.create_component(
+                            db,
+                            name=comp_data.name,
+                            type=comp_data.type,
+                            brand=comp_data.brand,
+                            model=comp_data.model,
+                            price=comp_data.price,
+                            description=comp_data.description,
+                            image_url=comp_data.image_url
+                        )
+                    
+                    # Obtener los componentes recién añadidos
+                    components = crud.get_components_by_type(db, component_type, limit=3)
+                
+                # Añadir información de componentes a la respuesta
+                if components:
+                    component_info = "\n\nAquí tienes algunas recomendaciones de nuestra base de datos:\n"
+                    for i, comp in enumerate(components, 1):
+                        component_info += f"{i}. {comp.name} - {comp.price}€\n"
+                    
+                    # Añadir la información al final de la respuesta
+                    response += component_info
+        except Exception as e:
+            print(f"Error al buscar componentes: {e}")
+            # No modificar la respuesta si hay error
+    
+    # No hay usuario autenticado en este endpoint público
     return {
         "message": response,
         "session_id": session_id

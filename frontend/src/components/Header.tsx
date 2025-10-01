@@ -11,19 +11,33 @@ import {
   Button,
   MenuItem,
   Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Alert,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import ComputerIcon from '@mui/icons-material/Computer';
+import { login } from '../services/api';
 
 const pages = [
   { name: 'Inicio', path: '/' },
   { name: 'Buscar Componentes', path: '/search' },
-  { name: 'Comparar', path: '/compare' },
+  { name: 'Recomendaciones', path: '/recommendations' },
+  { name: 'Comparar', path: '/comparison' },
   { name: 'Mi Perfil', path: '/profile' },
+  { name: 'Admin', path: '/admin' },
 ];
 
 const Header = () => {
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -31,6 +45,26 @@ const Header = () => {
 
   const handleCloseNavMenu = () => {
     setAnchorElNav(null);
+  };
+  
+  const handleOpenLogin = () => {
+    setLoginOpen(true);
+  };
+
+  const handleCloseLogin = () => {
+    setLoginOpen(false);
+    setError('');
+  };
+
+  const handleLogin = async () => {
+    try {
+      await login(username, password);
+      setIsLoggedIn(true);
+      handleCloseLogin();
+    } catch (error) {
+      console.error('Error al iniciar sesión:', error);
+      setError('Usuario o contraseña incorrectos');
+    }
   };
 
   return (
@@ -139,10 +173,50 @@ const Header = () => {
 
           {/* Botón de login */}
           <Box sx={{ flexGrow: 0 }}>
-            <Button color="inherit">Iniciar Sesión</Button>
+            <Button color="inherit" onClick={handleOpenLogin}>
+              {isLoggedIn ? 'Mi Cuenta' : 'Iniciar Sesión'}
+            </Button>
           </Box>
         </Toolbar>
       </Container>
+      
+      {/* Modal de inicio de sesión */}
+      <Dialog open={loginOpen} onClose={handleCloseLogin}>
+        <DialogTitle>Iniciar Sesión</DialogTitle>
+        <DialogContent>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Email o nombre de usuario"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            sx={{ mb: 2, mt: 1 }}
+          />
+          <TextField
+            margin="dense"
+            label="Contraseña"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseLogin}>Cancelar</Button>
+          <Button 
+            onClick={handleLogin} 
+            variant="contained"
+            disabled={!username || !password}
+          >
+            Iniciar Sesión
+          </Button>
+        </DialogActions>
+      </Dialog>
     </AppBar>
   );
 };

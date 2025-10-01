@@ -45,6 +45,7 @@ interface ChatBotProps {
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({ isOpen = false, onToggle }) => {
+  const [chatOpen, setChatOpen] = useState(isOpen);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -58,6 +59,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen = false, onToggle }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const handleToggleChat = () => {
+    setChatOpen(!chatOpen);
+    if (onToggle) {
+      onToggle();
+    }
+  };
   const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
@@ -362,22 +370,23 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen = false, onToggle }) => {
   }
 
   return (
-    <Slide direction="up" in={isOpen} mountOnEnter unmountOnExit>
-      <Paper
-        elevation={8}
-        sx={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          width: { xs: 'calc(100vw - 32px)', sm: 400 },
-          height: { xs: 'calc(100vh - 100px)', sm: 600 },
-          zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-          borderRadius: 3,
-          overflow: 'hidden'
-        }}
-      >
+    <Box>
+      <Slide direction="up" in={isOpen} mountOnEnter unmountOnExit>
+        <Paper
+          elevation={8}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            width: { xs: 'calc(100vw - 32px)', sm: 400 },
+            height: { xs: 'calc(100vh - 100px)', sm: 600 },
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: 3,
+            overflow: 'hidden'
+          }}
+        >
         {/* Header */}
         <Box
           sx={{
@@ -516,8 +525,9 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen = false, onToggle }) => {
             Presiona Enter para enviar • Shift+Enter para nueva línea
           </Typography>
         </Box>
-      </Paper>
-    </Slide>
+        </Paper>
+      </Slide>
+    </Box>
   );
 };
 

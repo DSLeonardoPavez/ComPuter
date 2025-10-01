@@ -141,8 +141,26 @@ class ComputerChatbot:
         user_message = ChatMessage(role="user", content=message)
         self.add_message(session_id, user_message)
         
-        # Generar respuesta
-        response = self._generate_response(session_id, message)
+        # Generar respuesta directamente desde el manejador de OpenAI
+        try:
+            # Usar el manejador de OpenAI con respuestas simuladas
+            from .openai_integration import openai_handler
+            
+            # Preparar historial de chat para contexto
+            chat_history = []
+            session = self.get_or_create_session(session_id)
+            for msg in session.messages[-5:]:  # Usar los últimos 5 mensajes para contexto
+                chat_history.append({
+                    "role": msg.role,
+                    "content": msg.content
+                })
+            
+            # Generar respuesta directamente
+            response = openai_handler.generate_response(message, chat_history)
+        except Exception as e:
+            print(f"Error al generar respuesta: {str(e)}")
+            # Respuesta amigable en caso de error
+            response = "Hola, soy el asistente de ComPuter. ¿En qué puedo ayudarte con componentes de PC?"
         
         # Añadir respuesta del chatbot
         bot_message = ChatMessage(role="assistant", content=response)
@@ -154,36 +172,55 @@ class ComputerChatbot:
         """Genera una respuesta basada en el mensaje del usuario."""
         session = self.get_or_create_session(session_id)
         
-        # Detectar intención del mensaje
-        intent = self._detect_intent(message)
-        
-        if intent == "component_info":
-            component = self._extract_component(message)
-            return self._get_component_info(component)
-        
-        elif intent == "component_recommendation":
-            component = self._extract_component(message)
-            usage_type = self._extract_usage_type(session)
-            return self._recommend_component(component, usage_type)
-        
-        elif intent == "best_component":
-            component = self._extract_component(message)
-            usage_type = self._extract_usage_type(session)
-            return self._best_component(component, usage_type)
-        
-        elif intent == "compatibility":
-            return self._compatibility_info()
-        
-        elif intent == "budget":
-            return self._budget_info()
-        
-        elif intent == "gaming_usage" or intent == "work_usage" or intent == "office_usage":
-            usage = "gaming" if intent == "gaming_usage" else "workstation" if intent == "work_usage" else "office"
-            session.context["usage_type"] = usage
-            return self._usage_type_info(usage)
-        
-        else:
-            return "Puedo ayudarte a elegir componentes para tu PC. Pregúntame sobre CPUs, GPUs, RAM, almacenamiento, placas base o fuentes de alimentación. También puedo darte recomendaciones según tu presupuesto y tipo de uso."
+        try:
+            # Intentar usar OpenAI para generar una respuesta dinámica
+            from .openai_integration import openai_handler
+            
+            # Preparar historial de chat para contexto
+            chat_history = []
+            for msg in session.messages[-5:]:  # Usar los últimos 5 mensajes para contexto
+                chat_history.append({
+                    "role": msg.role,
+                    "content": msg.content
+                })
+            
+            # Generar respuesta con OpenAI
+            return openai_handler.generate_response(message, chat_history)
+            
+        except ImportError:
+            # Si no se puede importar OpenAI, usar el sistema de respuestas predefinidas
+            print("OpenAI no disponible. Usando sistema de respuestas predefinidas.")
+            
+            # Detectar intención del mensaje
+            intent = self._detect_intent(message)
+            
+            if intent == "component_info":
+                component = self._extract_component(message)
+                return self._get_component_info(component)
+            
+            elif intent == "component_recommendation":
+                component = self._extract_component(message)
+                usage_type = self._extract_usage_type(session)
+                return self._recommend_component(component, usage_type)
+            
+            elif intent == "best_component":
+                component = self._extract_component(message)
+                usage_type = self._extract_usage_type(session)
+                return self._best_component(component, usage_type)
+            
+            elif intent == "compatibility":
+                return self._compatibility_info()
+            
+            elif intent == "budget":
+                return self._budget_info()
+            
+            elif intent == "gaming_usage" or intent == "work_usage" or intent == "office_usage":
+                usage = "gaming" if intent == "gaming_usage" else "workstation" if intent == "work_usage" else "office"
+                session.context["usage_type"] = usage
+                return self._usage_type_info(usage)
+            
+            else:
+                return "Puedo ayudarte a elegir componentes para tu PC. Pregúntame sobre CPUs, GPUs, RAM, almacenamiento, placas base o fuentes de alimentación. También puedo darte recomendaciones según tu presupuesto y tipo de uso."
     
     def _detect_intent(self, message: str) -> str:
         """Detecta la intención del mensaje del usuario usando NLP o patrones básicos."""

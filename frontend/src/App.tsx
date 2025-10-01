@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import ChatBot from './components/ChatBot';
+import ChatBot from './components/ChatBot/ChatBot';
 import HomePage from './pages/HomePage';
 import ComponentSearch from './pages/ComponentSearch';
 import ComparisonTool from './pages/ComparisonTool';
+import RecommendationTool from './pages/RecommendationTool';
 import UserProfileWizard from './pages/UserProfileWizard';
 import AdminPanel from './pages/AdminPanel';
 import './App.css';
@@ -32,6 +33,12 @@ const theme = createTheme({
 });
 
 function App() {
+  const [chatOpen, setChatOpen] = useState(false);
+
+  const handleToggleChat = () => {
+    setChatOpen(!chatOpen);
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -41,13 +48,14 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/search" element={<ComponentSearch />} />
-            <Route path="/compare" element={<ComparisonTool />} />
+            <Route path="/recommendations" element={<RecommendationTool />} />
+            <Route path="/comparison" element={<ComparisonTool />} />
             <Route path="/profile" element={<UserProfileWizard />} />
             <Route path="/admin" element={<AdminPanel />} />
           </Routes>
         </main>
         <Footer />
-        <ChatBot />
+        <ChatBot isOpen={chatOpen} onToggle={handleToggleChat} />
       </div>
     </ThemeProvider>
   );

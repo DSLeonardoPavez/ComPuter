@@ -358,6 +358,36 @@ export const compareComponents = async (componentIds: number[]): Promise<any> =>
   }
 };
 
+// Obtener recomendaciones de componentes
+export const getComponentRecommendations = async (request: {
+  budget: number;
+  use_case: string;
+  component_types: string[];
+}): Promise<any> => {
+  try {
+    const response = await api.post('/components/recommendations', request);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting recommendations:', error);
+    throw error;
+  }
+};
+
+// Ejecutar scraper
+export const runScraper = async (componentTypes?: string[]): Promise<any> => {
+  try {
+    const response = await api.post('/scraper/run', {
+      component_types: componentTypes
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error running scraper:', error);
+    throw error;
+  }
+};
+
+
+
 // Precios y ofertas
 export const getPriceHistory = async (componentId: number, days: number = 30): Promise<any> => {
   try {

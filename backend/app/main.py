@@ -136,5 +136,139 @@ def read_user_profile(user_id: int, db: Session = Depends(get_db), current_user:
 def read_users_me(current_user: User = Depends(get_current_active_user)):
     return current_user
 
+# Endpoint para ejecutar scraping
+@app.post("/scraper/run")
+def run_scraper(
+    component_types: Optional[List[str]] = None,
+    db: Session = Depends(get_db)
+):
+    """Ejecuta el scraper para obtener componentes de múltiples fuentes."""
+    try:
+        from .scraper import scrape_and_populate_database
+        
+        if component_types is None:
+            component_types = ['CPU', 'GPU', 'RAM', 'Motherboard', 'Storage', 'PSU', 'Case', 'Cooler']
+        
+        # Ejecutar scraping en un hilo separado para no bloquear la API
+        import threading
+        
+        def run_scraping():
+            try:
+                scrape_and_populate_database(db, component_types)
+                logger.info(f"Scraping completado para: {component_types}")
+            except Exception as e:
+                logger.error(f"Error durante el scraping: {str(e)}")
+        
+        thread = threading.Thread(target=run_scraping)
+        thread.daemon = True  # El hilo terminará cuando el programa principal termine
+        thread.start()
+        
+        return {
+            "message": "Scraping iniciado en segundo plano",
+            "component_types": component_types,
+            "status": "running"
+        }
+    except Exception as e:
+        logger.error(f"Error iniciando scraper: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error iniciando scraper: {str(e)}")
+
+# Endpoint para comparar componentes
+@app.post("/components/compare")
+def compare_components(
+    component_ids: List[int],
+    db: Session = Depends(get_db)
+):
+    """Compara múltiples componentes y verifica su compatibilidad."""
+    try:
+        # Obtener los componentes
+        components = []
+        for comp_id in component_ids:
+            component = get_component(db, comp_id)
+            if component:
+                components.append(component)
+        
+        if not components:
+            raise HTTPException(status_code=404, detail="No se encontraron componentes")
+        
+        # Verificar compatibilidad usando el motor de IA
+        from .crud import check_compatibility
+        compatibility_result = check_compatibility(db, component_ids)
+        
+        # Calcular estadísticas de la comparación
+        total_price = sum(comp.price for comp in components)
+        avg_performance = sum(comp.performance_score or 0 for comp in components) / len(components)
+        total_power = sum(comp.power_consumption or 0 for comp in components)
+        
+        # Agrupar componentes por tipo
+        components_by_type = {}
+        for comp in components:
+            if comp.type not in components_by_type:
+                components_by_type[comp.type] = []
+            components_by_type[comp.type].append({
+                "id": comp.id,
+                "name": comp.name,
+                "brand": comp.brand,
+                "model": comp.model,
+                "price": comp.price,
+                "performance_score": comp.performance_score,
+                "power_consumption": comp.power_consumption,
+                "specifications": [{"name": spec.name, "value": spec.value} for spec in comp.specifications]
+            })
+        
+        return {
+            "components": components_by_type,
+            "compatibility": compatibility_result,
+            "summary": {
+                "total_price": total_price,
+                "average_performance": avg_performance,
+                "total_power_consumption": total_power,
+                "component_count": len(components)
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error comparando componentes: {str(e)}")
+
+# Endpoint para obtener recomendaciones de componentes
+@app.post("/components/recommendations")
+def get_component_recommendations(
+    request: dict,
+    db: Session = Depends(get_db)
+):
+    """Obtiene recomendaciones de componentes basadas en presupuesto y uso."""
+    try:
+        from .ai_engine import get_ai_engine
+        
+        ai_engine = get_ai_engine(db)
+        
+        # Obtener recomendaciones usando el motor de IA
+        recommendations = ai_engine.get_recommendations(
+            budget=request.get("budget"),
+            use_case=request.get("use_case"),
+            component_types=request.get("component_types") or ['CPU', 'GPU', 'RAM', 'Motherboard', 'Storage', 'PSU']
+        )
+        
+        return recommendations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error obteniendo recomendaciones: {str(e)}")
+
+# Endpoint para obtener estadísticas de componentes
+@app.get("/components/stats")
+def get_components_stats(db: Session = Depends(get_db)):
+    """Obtiene estadísticas de los componentes en la base de datos."""
+    try:
+        stats = {}
+        component_types = ['CPU', 'GPU', 'RAM', 'Motherboard', 'Storage', 'PSU', 'Case', 'Cooler']
+        
+        for comp_type in component_types:
+            count = db.query(models.Component).filter(models.Component.type == comp_type).count()
+            stats[comp_type] = count
+        
+        total = sum(stats.values())
+        stats['total'] = total
+        
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error obteniendo estadísticas: {str(e)}")
+
 # Incluir los endpoints del chatbot
 app.include_router(chatbot_endpoints.router, prefix="/api/chatbot", tags=["chatbot"])
